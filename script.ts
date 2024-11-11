@@ -1,6 +1,15 @@
 
 console.log("LOAD")
 
+
+/////// TO DO ////////////
+/////// - For the access token, just refer one big function to generate a token,
+///////   and have an await function to continue the rest (this avoids repeating the functions after)
+/////// - Create a refresh token, and make sure it works with another account (clemence : clemesteves@gmail.com, Hermes12!)
+/////// - Load on an external website (ideally, follow the github repo, but...)
+
+
+
 // Set basic variables
 const appClientId = "e61711cbd130408abf2d471288b77e87";
 const redirectUri = 'http://localhost:5173/callback'; // IMPORTANT: IT HAS TO BE A REDIRECT URI ON THE APP SETTINGS ONLINE
@@ -30,25 +39,19 @@ if ((!accessToken || accessToken === 'undefined') && (!postAuthorization || post
     const profile = await fetchProfile(accessToken);
     populateUI(profile);
     const tracks = await fetchTopTracks(accessToken);
-    console.log(tracks); // Log to console
     populateTracks(tracks);
     const songs = await fetchAllSongs(accessToken);
-    console.log(songs); // Log to console
     const unplayables = filterUnplayables(await songs);
-    console.log(unplayables); // Log to console
+    populateUnplayables(unplayables);
 } else {
     console.log("Post Access Token");
     const profile = await fetchProfile(accessToken);
-    console.log(profile); // Log to console
     populateUI(profile);
     const tracks = await fetchTopTracks(accessToken);
-    console.log(tracks); // Log to console
     populateTracks(tracks);
     const songs = await fetchAllSongs(accessToken);
-    console.log("songs"); 
-    console.log(songs); // Log to console
     const unplayables = filterUnplayables(await songs);
-    console.log(unplayables); // Log to console
+    populateUnplayables(unplayables);
 }
 
 
@@ -237,6 +240,29 @@ function populateTracks(tracks: any) {
         document.getElementById("track"+i+"_title")!.innerText = tracks[i].title;
         document.getElementById("track"+i+"_artist")!.innerText = tracks[i].artist;
     }
+
+}
+
+function populateUnplayables(tracks: any) {  
+
+    // unplayablesTitles
+
+    let output = document.getElementById("unplayablesTitles");
+    let html = '';
+
+    tracks.forEach((track, index) =>{
+        console.log(track)
+        html += `
+            <tr>
+                <td>${track.number}</td>
+                <td>${track.artist}</td>
+                <td>${track.title}</td>
+                <td>${track.added_at}</td>
+            </tr>
+        `;
+    })
+
+    output.innerHTML = html;
 
 }
   
