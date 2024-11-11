@@ -34,6 +34,8 @@ if ((!accessToken || accessToken === 'undefined') && (!postAuthorization || post
     populateTracks(tracks);
     const songs = await fetchAllSongs(accessToken);
     console.log(songs); // Log to console
+    const unplayables = filterUnplayables(await songs);
+    console.log(unplayables); // Log to console
 } else {
     console.log("Post Access Token");
     const profile = await fetchProfile(accessToken);
@@ -45,6 +47,8 @@ if ((!accessToken || accessToken === 'undefined') && (!postAuthorization || post
     const songs = await fetchAllSongs(accessToken);
     console.log("songs"); 
     console.log(songs); // Log to console
+    const unplayables = filterUnplayables(await songs);
+    console.log(unplayables); // Log to console
 }
 
 
@@ -143,8 +147,6 @@ async function fetchTopTracks(token: string): Promise<any> {
         method: "GET", 
         headers: { 
             'Authorization': `Bearer ${token}`,
-            // limit: 50,
-            // offset: 0
         }
     });
 
@@ -197,13 +199,19 @@ async function fetchAllSongs(token: string): Promise<any> {
     return tracks;
 }
 
-function filterUnplayables(tracks: any) {  
+function filterUnplayables(tracks: any) { 
+    
+    let unplayables = [];
 
     for (var i in tracks) {
-        document.getElementById("track"+i+"_title")!.innerText = tracks[i].title;
-        document.getElementById("track"+i+"_artist")!.innerText = tracks[i].artist;
+        if (!tracks[i].is_playable) {
+            tracks[i].number = parseInt(i) + 1;
+            unplayables.push(tracks[i]);
+            // Use Object.assign(itemJSON, json) to add the number in the list
+        }
     }
 
+    return unplayables;
 }
   
 
