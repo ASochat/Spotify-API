@@ -13,7 +13,7 @@ var postAuthorization = localStorage.getItem("post_authorization")
 console.log("postAuthorization: " + postAuthorization)
 console.log("accessToken: " + accessToken)
 
-///// NORMAL CODE TO RUN - Fails because the code is not right, need to refresh everytime /////
+///// NORMAL CODE TO RUN - Fails because the code needs to refresh everytime, but not the access Token /////
 if ((!accessToken || accessToken === 'undefined') && (!postAuthorization || postAuthorization === 'no')) {
     console.log("Auth flow");
     localStorage.setItem('post_authorization', 'yes')
@@ -29,10 +29,22 @@ if ((!accessToken || accessToken === 'undefined') && (!postAuthorization || post
     localStorage.setItem('post_authorization', "no"); // Can now connect directly with the access token
     const profile = await fetchProfile(accessToken);
     populateUI(profile);
+    const tracks = await fetchTopTracks(accessToken);
+    console.log(tracks); // Log to console
+    populateTracks(tracks);
+    const songs = await fetchAllSongs(accessToken);
+    console.log(songs); // Log to console
 } else {
     console.log("Post Access Token");
     const profile = await fetchProfile(accessToken);
+    console.log(profile); // Log to console
     populateUI(profile);
+    const tracks = await fetchTopTracks(accessToken);
+    console.log(tracks); // Log to console
+    populateTracks(tracks);
+    const songs = await fetchAllSongs(accessToken);
+    console.log("songs"); 
+    console.log(songs); // Log to console
 }
 
 
@@ -46,7 +58,7 @@ export async function redirectToAuthCodeFlow(clientId: string) {
     params.append("client_id", clientId);
     params.append("response_type", "code");
     params.append("redirect_uri", "http://localhost:5173/callback");
-    params.append("scope", "user-read-private user-read-email");
+    params.append("scope", "user-read-private user-read-email user-top-read user-library-read"); // IMPORTANT TO HAVE THE SCOPE OF WHAT WE WANT
     params.append("code_challenge_method", "S256");
     params.append("code_challenge", challenge);
 
@@ -74,7 +86,6 @@ async function generateCodeChallenge(codeVerifier: string) {
 
 export async function getAccessToken(clientId: string, code: string): Promise<string> {
     const verifier = localStorage.getItem("verifier");
-    console.log("verifier: "+ verifier);
 
     const params = new URLSearchParams();
     params.append("client_id", clientId);
@@ -120,11 +131,81 @@ const getRefreshToken = async () => {
 
 async function fetchProfile(token: string): Promise<any> {
     const result = await fetch("https://api.spotify.com/v1/me", {
-        method: "GET", headers: { Authorization: `Bearer ${token}` }
+        method: "GET", 
+        headers: { Authorization: `Bearer ${token}` }
     });
 
     return await result.json();
 }
+
+async function fetchTopTracks(token: string): Promise<any> {
+    const result = await fetch("https://api.spotify.com/v1/me/top/tracks", {
+        method: "GET", 
+        headers: { 
+            'Authorization': `Bearer ${token}`,
+            // limit: 50,
+            // offset: 0
+        }
+    });
+
+    const { items } = await result.json()
+
+    console.log("Top Tracks Raw");
+    console.log(items);
+
+    const tracks = items.slice(0, 10).map((track) => ({
+        artist: track.artists.map((_artist) => _artist.name).join(', '),
+        songUrl: track.external_urls.spotify,
+        title: track.name,
+      }))
+
+    return tracks;
+}
+
+async function fetchAllSongs(token: string): Promise<any> {
+
+    let offset = 0;
+    let batchSize = 50; 
+    var tracks = [];
+    var newTracks = [];  // Holds new batch of tracks
+
+    while (batchSize == 50) {
+        var result = await fetch("https://api.spotify.com/v1/me/tracks?market=NO&limit=50&offset="+offset, {
+            method: "GET", 
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+            }
+        })
+
+        let { items } = await result.json()
+
+        newTracks = items.slice(0, 50).map((item) => ({
+            artist: item.track.artists.map((_artist) => _artist.name).join(', '),
+            title: item.track.name,
+            added_at: item.added_at,
+            is_playable: item.track.is_playable,
+          }))
+
+        console.log(offset);
+
+        tracks = tracks.concat(await newTracks);
+
+        batchSize = items.length;
+        offset += batchSize;
+    }
+
+    return tracks;
+}
+
+function filterUnplayables(tracks: any) {  
+
+    for (var i in tracks) {
+        document.getElementById("track"+i+"_title")!.innerText = tracks[i].title;
+        document.getElementById("track"+i+"_artist")!.innerText = tracks[i].artist;
+    }
+
+}
+  
 
 function populateUI(profile: any) {
     document.getElementById("displayName")!.innerText = profile.display_name;
@@ -140,5 +221,14 @@ function populateUI(profile: any) {
     document.getElementById("url")!.innerText = profile.href;
     document.getElementById("url")!.setAttribute("href", profile.href);
     document.getElementById("imgUrl")!.innerText = profile.images[0]?.url ?? '(no profile image)';
+}
+
+function populateTracks(tracks: any) {  
+
+    for (var i in tracks) {
+        document.getElementById("track"+i+"_title")!.innerText = tracks[i].title;
+        document.getElementById("track"+i+"_artist")!.innerText = tracks[i].artist;
+    }
+
 }
   
